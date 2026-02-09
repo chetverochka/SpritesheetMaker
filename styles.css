@@ -1,0 +1,144 @@
+body {
+    padding: 0;
+    margin: 0;
+    background-color: darkslategrey;
+    color: white;
+    font-family: "Atkinson Hyperlegible Mono", sans-serif;
+    font-optical-sizing: auto;
+    font-style: normal;
+}
+* {
+    box-sizing: border-box;
+}
+button {
+    font-family: "Atkinson Hyperlegible Mono", sans-serif;
+    font-optical-sizing: auto;
+    font-style: normal;
+}
+h1, h2, h3, p, a {
+    padding: 0;
+    margin: 0;
+}
+header {
+    padding: 10px;
+    background-color: #777777;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+footer {
+    background-color: #777777;
+    height: 100px;
+}
+#file-buttons-container {
+    display: flex;
+    gap: 10px;
+}
+main {
+    height: calc(100vh - 160px);
+    display: flex;
+}
+#left-container {
+    height: 100%;
+    width: 100%;
+    background-color: #575757;
+    padding: 10px;
+    overflow-y: scroll;
+    overflow-x: hidden;
+    box-sizing: border-box;
+}
+#sheet-items {
+    list-style-type: none;
+    padding: 0;
+    user-select: none;
+}
+#sheet-items li img {
+    height: 70px;
+    width: 70px;
+    object-fit: contain;
+    border: 1px solid black;
+    background-color: lightgray;
+}
+#sheet-items li {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    padding: 0;
+    justify-content: space-between;
+    align-items: center;
+    padding-right: 10px;
+}
+#sheet-items li p {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    width: 250px;
+}
+#sheet-items li input[type="text"] {
+    width: 250px;
+}
+#sheet-items li:hover {
+    background-color: rgba(255, 255, 255, 0.21);
+}
+#right-container {
+    height: 100%;
+    width: 80%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+}
+#canvas-wrapper {
+    height: 100%;
+    width: 100%;
+    overflow: auto;
+    border: 2px solid black;
+    box-sizing: border-box;
+    display: block;
+}
+#canvas-wrapper canvas {
+    display: block;
+    border: 2px dashed black;
+}
+#options-container {
+    display: flex;
+    gap: 10px;
+    padding: 10px;
+    width: 100%;
+}
+#add-frame-wrapper {
+    width: 100%;
+    height: 120px;
+    border: 1px dashed white;
+    box-sizing: border-box;
+    position: relative;
+}
+#add-frame-input {
+    position: absolute;
+    opacity: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255,0,0,0.5);
+    z-index: 1;
+}
+#add-frame-wrapper .internal-decoration {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 0;
+}
+#add-frame-wrapper .internal-decoration:active {
+    background: #777777;
+}
+#options-container {
+    display: flex;
+    gap: 20px;
+}
+#options-container div {
+    display: flex;
+    gap: 5px;
+}
