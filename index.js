@@ -65,7 +65,8 @@ frameInput.addEventListener("change", function(event){
         let reader = new FileReader();
         reader.readAsDataURL(file);
         reader.onload = function(e){
-            // adding frame
+            // adding frame 
+            // TODO: separate function
             let imgSrc = reader.result;
             
             let image = new Image();
