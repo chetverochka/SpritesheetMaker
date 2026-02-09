@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cocos2d-x spritesheet maker</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/7.2.4/pixi.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Mono:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet">
@@ -20,7 +20,7 @@
         <button onclick="setupNewProject();">New</button>
         <button onclick="loadProjectFromFile();">Open</button>
         <button onclick="saveProjectToFile();">Save</button>
-        <button onclick="exportProject();">Export</button>
+        <button onclick="exportProject()">Export</button>
         <button onclick="splitFrames();">Split</button>
     </div>
 </header>
@@ -33,11 +33,12 @@
             </div>
         </div>
         <div style="display: flex; width: 100%; gap: 10px; justify-content: flex-end; padding: 10px 0px;">
-            <button id="select-all-button">Select All</button>
-            <button id="select-all-button">Deselect All</button>
+            <button id="select-all-button" onclick="selectAll();">Select All</button>
+            <button id="select-all-button" onclick="deselectAll();">Deselect All</button>
         </div>
         <ul id="sheet-items"></ul>
     </div>
+    <div id="splitter"></div>
     <div id="right-container">
         <div id="canvas-wrapper">
             <canvas id="spritesheet-canvas"></canvas>

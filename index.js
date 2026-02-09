@@ -1,9 +1,63 @@
-let canvas = new fabric.Canvas("spritesheet-canvas", {
+let app = new PIXI.Application({
+    view: document.getElementById("spritesheet-canvas"),
     width: 1280,
     height: 1280,
-    backgroundColor: "rgba(255, 255, 255, 0.61)",
+    backgroundColor: 0xFFFFFF,
+    backgroundAlpha: 0.61,
+    antialias: true,
 });
+// Splitter and resize handling so canvas always fits wrapper
+const canvasWrapper = document.getElementById('canvas-wrapper');
+const splitter = document.getElementById('splitter');
+const leftPanel = document.getElementById('left-container');
+const rightPanel = document.getElementById('right-container');
+let isDraggingSplitter = false;
+let splitterStartX = 0;
+let leftStartWidth = 0;
 
+// logical canvas size (keeps PIXI coordinate system)
+let logicalWidth = app.renderer.width;
+let logicalHeight = app.renderer.height;
+
+function resizeToWrapper(){
+    if(!canvasWrapper) return;
+    const wrapperW = canvasWrapper.clientWidth;
+    const wrapperH = canvasWrapper.clientHeight;
+    const scale = Math.max(0.0001, Math.min(wrapperW / logicalWidth, wrapperH / logicalHeight));
+    const canvasEl = app.view;
+    canvasEl.style.width = Math.floor(logicalWidth * scale) + 'px';
+    canvasEl.style.height = Math.floor(logicalHeight * scale) + 'px';
+    // center handled by flexbox in CSS
+}
+
+if (splitter){
+    splitter.addEventListener('mousedown', (e)=>{
+        isDraggingSplitter = true;
+        splitterStartX = e.clientX;
+        leftStartWidth = leftPanel.getBoundingClientRect().width;
+        document.body.style.userSelect = 'none';
+    });
+    window.addEventListener('mousemove', (e)=>{
+        if(!isDraggingSplitter) return;
+        const dx = e.clientX - splitterStartX;
+        let newLeft = leftStartWidth + dx;
+        const min = 100;
+        const max = window.innerWidth - 200;
+        newLeft = Math.max(min, Math.min(max, newLeft));
+        leftPanel.style.flex = '0 0 ' + newLeft + 'px';
+        resizeToWrapper();
+    });
+    window.addEventListener('mouseup', ()=>{
+        if(isDraggingSplitter){
+            isDraggingSplitter = false;
+            document.body.style.userSelect = '';
+        }
+    });
+}
+
+window.addEventListener('resize', ()=>{ resizeToWrapper(); });
+// initial fit
+window.requestAnimationFrame(()=>{ resizeToWrapper(); });
 
 /*
 associative array of frames, each frame is an object with properties:
@@ -18,7 +72,7 @@ associative array of frames, each frame is an object with properties:
     selectionRect: fabric.Rect
 }
 */
-let spriteFrames = []; 
+let spriteFrames = [];
 let selectedFrames = [];
 
 // Packing settings
@@ -27,8 +81,8 @@ let spriteMargin = 0;
 let allowedToRotate = false;
 let couldNotFitAll = false;
 
-document.querySelector("#options-container input[name='width']").value = canvas.getWidth();
-document.querySelector("#options-container input[name='height']").value = canvas.getHeight();
+document.querySelector("#options-container input[name='width']").value = app.renderer.width;
+document.querySelector("#options-container input[name='height']").value = app.renderer.height;
 document.querySelector("#options-container input[name='padding']").value = spritePadding;
 document.querySelector("#options-container input[name='border_padding']").value = spriteMargin;
 document.querySelector("#options-container input[name='force_squared']").checked = false;
@@ -50,6 +104,15 @@ function exportProject(){
         alert("The frames don't fit on the canvas! Please remove the extra frames or increase the canvas size.");
         return;
     }
+
+    
+
+    let doc = document.implementation.createDocument("", "", null);
+
+    let dictElement = doc.createElement("TextureAtlas");
+
+    let plist = new XMLSerializer().serializeToString(dictElement);
+    console.log(plist);
 }
 
 function splitFrames(){
@@ -79,34 +142,40 @@ frameInput.addEventListener("change", function(event){
                     sourceSize: [image.width, image.height],
                     offSet: [0, 0],
                     position: [0, 0],
-                    canvasSprite: null
+                    canvasSprite: null,
+                    imageSprite: null,
+                    selectionRect: null,
                 };
-                console.log(frameData);
                 spriteFrames.push(frameData);
 
-                fabric.Image.fromURL(imgSrc, function(img){
-                    img.set({
-                        originX: "left",
-                        originY: "top",
-                        selectable: false,
-                        hasControls: false,
-                    });
-                    frameData.canvasSprite = img;
-                    canvas.add(img);
-                    updateCanvas();
-                });
+                // create PIXI texture and sprites
+                let texture = PIXI.Texture.from(imgSrc);
+                let container = new PIXI.Container();
+                container.interactive = true;
 
-                let rect = new fabric.Rect({
-                    left: 0,
-                    top: 0,
-                    width: image.width,
-                    height: image.height,
-                    fill: "rgba(255, 0, 0, 0.5)",
-                    selectable: false,
-                    hasControls: false,
-                });
-                frameData.selectionRect = rect;
+                let imgSprite = new PIXI.Sprite(texture);
+                imgSprite.x = 0;
+                imgSprite.y = 0;
+                imgSprite.width = image.width;
+                imgSprite.height = image.height;
+                imgSprite.interactive = true;
 
+                // selection overlay
+                let sel = new PIXI.Graphics();
+                sel.beginFill(0xFF0000, 0.5);
+                sel.drawRect(0, 0, image.width, image.height);
+                sel.endFill();
+                sel.visible = false;
+
+                container.addChild(imgSprite);
+                container.addChild(sel);
+
+                frameData.canvasSprite = container;
+                frameData.imageSprite = imgSprite;
+                frameData.selectionRect = sel;
+
+                app.stage.addChild(container);
+                updateCanvas();
                 updateFramesList();
             }
             image.onerror = function(){ alert("Error ocurred while loading sprite frame!"); }
@@ -169,17 +238,16 @@ function updateFramesList(){
         });
         checkbox.checked = selectedFrames.includes(itemData);
         checkbox.addEventListener("change", ()=>{
-            let index = spriteFrames.indexOf(itemData);
             if(checkbox.checked){
                 if(!selectedFrames.includes(itemData)){
                     selectedFrames.push(itemData);
-                    canvas.add(itemData.selectionRect);
+                    itemData.selectionRect.visible = true;
                 }
             } else {
                 let selectedIndex = selectedFrames.indexOf(itemData);
                 if(selectedIndex > -1){
                     selectedFrames.splice(selectedIndex, 1);
-                    canvas.remove(itemData.selectionRect);
+                    itemData.selectionRect.visible = false;
                 }
             }
             updateSelection();
@@ -320,8 +388,8 @@ function findPosition(freeRects, w, h, allowRotate){
 
 
 function updateCanvas(){
-    let width = canvas.getWidth();
-    let height = canvas.getHeight();
+    let width = app.renderer.width;
+    let height = app.renderer.height;
 
     let freeRects = [
         new Rect(spriteMargin, spriteMargin,
@@ -359,25 +427,27 @@ function updateCanvas(){
             placed.y + spritePadding
         ];
 
-        let sprite = frame.canvasSprite;
+        let container = frame.canvasSprite;
+        let imgSprite = frame.imageSprite;
+        let selectionRect = frame.selectionRect;
 
-        sprite.set({
-            angle: result.rotated ? 90 : 0
-        });
+        // position the container
+        container.x = placed.x + spritePadding;
+        container.y = placed.y + spritePadding;
 
         if(result.rotated){
-            sprite.set({
-                left: placed.x + frame.sourceSize[1] + spritePadding,
-                top: placed.y + spritePadding
-            });
-        }else{
-            sprite.set({
-                left: placed.x + spritePadding,
-                top: placed.y + spritePadding
-            });
+            imgSprite.rotation = Math.PI/2;
+            imgSprite.x = frame.sourceSize[1];
+            imgSprite.y = 0;
+            selectionRect.rotation = Math.PI / 2;
+            selectionRect.pivot.set(0,frame.sourceSize[1]);
+        } else {
+            imgSprite.rotation = 0;
+            imgSprite.x = 0;
+            imgSprite.y = 0;
+            selectionRect.rotation = 0;
+            selectionRect.pivot.set(0,0);
         }
-
-        sprite.setCoords();
 
         let newFree = [];
 
@@ -391,7 +461,7 @@ function updateCanvas(){
 
     }
 
-    canvas.renderAll();
+    app.renderer.render(app.stage);
     updateSelection();
 }
 
@@ -405,8 +475,11 @@ function deleteSelected(){
         let frame = selectedFrames[i];
         let index = spriteFrames.indexOf(frame);
         if(index > -1){
-            canvas.remove(frame.canvasSprite);
-            canvas.remove(frame.selectionRect);
+            // remove container from stage and destroy
+            if(frame.canvasSprite && frame.canvasSprite.parent){
+                app.stage.removeChild(frame.canvasSprite);
+                frame.canvasSprite.destroy({children: true});
+            }
             spriteFrames.splice(index, 1);
         }
     }
@@ -416,16 +489,14 @@ function deleteSelected(){
 }
 
 function updateSelection(){
-    for(let frame of selectedFrames){
-        frame.selectionRect.set({
-            originX: 0,
-            originY: 0,
-            left: frame.position[0],
-            top: frame.position[1],
-            angle: (frame.rotated ? 90 : 0)
-        });
+    // ensure selection overlay visibility matches selection state
+    for(let frame of spriteFrames){
+        if(frame.selectionRect){
+            frame.selectionRect.visible = selectedFrames.includes(frame);
+        }
     }
-    canvas.renderAll();
+
+    app.renderer.render(app.stage);
 }
 
 function updateOptions(){
@@ -442,11 +513,14 @@ function updateOptions(){
     if (forceSquared){
         h = w;
     }
-    canvas.setHeight(h);
-    canvas.setWidth(w);  
+    logicalWidth = w;
+    logicalHeight = h;
+    app.renderer.resize(logicalWidth, logicalHeight);
     spritePadding = padding;
     spriteMargin = borderPadding;
 
+    // adjust displayed size to wrapper while keeping logical resolution
+    resizeToWrapper();
     updateCanvas();
 }
 
@@ -454,4 +528,16 @@ let optionsNodes = document.querySelectorAll("#options-container input");
 for(let i = 0; i < optionsNodes.length; i++){
     let node = optionsNodes[i];
     node.addEventListener("change", updateOptions);
+}
+
+function selectAll(){
+    selectedFrames = [...spriteFrames];
+    updateSelection();
+    updateFramesList();
+}
+
+function deselectAll() {
+    selectedFrames = [];
+    updateSelection();
+    updateFramesList();
 }
