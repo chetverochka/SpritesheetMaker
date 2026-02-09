@@ -14,7 +14,7 @@
 <header>
     <div style="display: flex; gap: 20px; align-items:center;">
         <h1 id="title">Cocos2d-x 3.x+ Spritesheet maker</h1>
-        <a href="#"><button>GitHub</button></a>
+        <a href="https://github.com/chetverochka/SpritesheetMaker"><button>GitHub</button></a>
     </div>
     <div id="file-buttons-container">
         <button onclick="setupNewProject();">New</button>

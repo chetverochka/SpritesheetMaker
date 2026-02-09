@@ -1,7 +1,7 @@
 let app = new PIXI.Application({
     view: document.getElementById("spritesheet-canvas"),
-    width: 1280,
-    height: 1280,
+    width: 1024,
+    height: 1024,
     backgroundColor: 0xFFFFFF,
     backgroundAlpha: 0.61,
     antialias: true,
@@ -76,6 +76,12 @@ let spriteFrames = [];
 let selectedFrames = [];
 
 // Packing settings
+// let options = { TODO: separate object
+//     spritePadding: 0,
+//     borderPadding: 0,
+//     allowRotation: false,
+//     couldNotFitAll: false
+// };
 let spritePadding = 0;
 let spriteMargin = 0;
 let allowedToRotate = false;
@@ -87,8 +93,22 @@ document.querySelector("#options-container input[name='padding']").value = sprit
 document.querySelector("#options-container input[name='border_padding']").value = spriteMargin;
 document.querySelector("#options-container input[name='force_squared']").checked = false;
 
-function setupNewProject(){
 
+function setupNewProject(){
+    // clear frames
+    selectAll();
+    deleteSelected();
+
+    spriteFrames = [];
+
+    spritePadding = 0;
+    spriteMargin = 0;
+    allowedToRotate = false;
+    couldNotFitAll = false;
+
+    updateCanvas();
+    updateFramesList();
+    updateOptions();
 }   
 
 function loadProjectFromFile(){
@@ -96,7 +116,14 @@ function loadProjectFromFile(){
 }
 
 function saveProjectToFile(){
-
+    let projectStr = "Nothing to see here";
+    let blob = new Blob([projectStr], {type: "application/json"});
+    let url = URL.createObjectURL(blob);
+    let a = document.createElement("a");
+    a.href = url;
+    a.download = "project.ssm";
+    a.click();
+    URL.revokeObjectURL(url);
 }
 
 function exportProject(){
