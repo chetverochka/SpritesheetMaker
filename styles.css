@@ -144,15 +144,24 @@ main {
     align-items: center;
     justify-content: center;
     z-index: 0;
+    cursor: pointer;
 }
 #add-frame-wrapper .internal-decoration:active {
     background: #777777;
 }
+
 #options-container {
     display: flex;
-    gap: 20px;
+    gap: 10px;
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
 }
 #options-container div {
     display: flex;
     gap: 5px;
+    background: rgba(0, 0, 0, 0.148);
+    border-radius: 10px;
+    padding: 10px;
+    
 }

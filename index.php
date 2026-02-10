@@ -65,6 +65,10 @@
                 <p>Border padding:</p>
                 <input type="number" placeholder="border padding" name="border_padding" style="width: 70px;">
             </div>  
+            <div>
+                <p>Texture name:</p>
+                <input type="text" placeholder="spritesheet.png" name="texture_name" style="width: 270px;">
+            </div>  
         </div>
     </div>
 </main>

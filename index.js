@@ -76,21 +76,19 @@ let spriteFrames = [];
 let selectedFrames = [];
 
 // Packing settings
-// let options = { TODO: separate object
-//     spritePadding: 0,
-//     borderPadding: 0,
-//     allowRotation: false,
-//     couldNotFitAll: false
-// };
-let spritePadding = 0;
-let spriteMargin = 0;
-let allowedToRotate = false;
-let couldNotFitAll = false;
+let defaultOptions = {
+    spritePadding: 0,
+    borderPadding: 0,
+    allowRotation: false,
+    couldNotFitAll: false
+};
+
+let options = defaultOptions;
 
 document.querySelector("#options-container input[name='width']").value = app.renderer.width;
 document.querySelector("#options-container input[name='height']").value = app.renderer.height;
-document.querySelector("#options-container input[name='padding']").value = spritePadding;
-document.querySelector("#options-container input[name='border_padding']").value = spriteMargin;
+document.querySelector("#options-container input[name='padding']").value = options.spritePadding;
+document.querySelector("#options-container input[name='border_padding']").value = options.borderPadding;
 document.querySelector("#options-container input[name='force_squared']").checked = false;
 
 
@@ -101,29 +99,130 @@ function setupNewProject(){
 
     spriteFrames = [];
 
-    spritePadding = 0;
-    spriteMargin = 0;
-    allowedToRotate = false;
-    couldNotFitAll = false;
+    options = defaultOptions;
 
     updateCanvas();
     updateFramesList();
     updateOptions();
 }   
 
+function setupProjectFromData(projectData){
+    alert("Project Data: " + JSON.stringify(projectData));
+    setupNewProject();
+
+    try {
+        for(let i = 0; i < projectData.frames.length; i++){
+            let frameData = projectData.frames[i];
+
+            let image = new Image();
+            image.src = frameData.data;
+            image.onload = function(){
+                // TODO: do a separate function
+                let texture = PIXI.Texture.from(frameData.data);
+                let container = new PIXI.Container();
+                container.interactive = true;
+
+                let imgSprite = new PIXI.Sprite(texture);
+                imgSprite.x = 0;
+                imgSprite.y = 0;
+                imgSprite.width = image.width;
+                imgSprite.height = image.height;
+                imgSprite.interactive = true;
+
+                // selection overlay
+                let sel = new PIXI.Graphics();
+                sel.beginFill(0xFF0000, 0.5);
+                sel.drawRect(0, 0, image.width, image.height);
+                sel.endFill();
+                sel.visible = false;
+
+                container.addChild(imgSprite);
+                container.addChild(sel);
+
+                frameData.canvasSprite = container;
+                frameData.imageSprite = imgSprite;
+                frameData.selectionRect = sel;
+
+                app.stage.addChild(container);
+
+                let frame = {
+                    frameName: frameData.frameName,
+                    data: frameData.data,
+                    rotated: frameData.rotated,
+                    sourceSize: [image.width, image.height],
+                    offSet: frameData.offSet,
+                    position: frameData.position, 
+                    canvasSprite: container,
+                    imageSprite: imgSprite,
+                    selectionRect: sel
+                };
+
+                spriteFrames.push(frame);
+
+                if (i >= projectData.frames.length - 1){
+                    updateCanvas();
+                    updateFramesList();
+                }
+            };
+            image.onerror = function() { throw new Error("Image loading error!");}
+        }
+
+        // BUG
+        options = projectData.options;
+        updateOptions();
+    }
+    catch (e){
+        alert("Cannot load project. (see console)");
+        console.error(e);
+    }
+}
+
 function loadProjectFromFile(){
-    
+    try {
+        var input = document.createElement('input');
+        input.type = 'file';
+        input.click();
+        input.onchange = e => { 
+            let file = e.target.files[0]; 
+            let reader = new FileReader();
+            reader.readAsText(file, 'UTF-8');
+            reader.onload = readerEvent => {
+                let content = readerEvent.target.result;
+                let projectData = JSON.parse(content);
+                setupProjectFromData(projectData);
+            }
+        }
+    }
+    catch(e) {
+        alert("Cannot load project! (see console)");
+        console.log(e);
+    }
 }
 
 function saveProjectToFile(){
-    let projectStr = "Nothing to see here";
-    let blob = new Blob([projectStr], {type: "application/json"});
-    let url = URL.createObjectURL(blob);
+    let projectData = {
+        frames: [],
+        options: options
+    };
+
+    for(let frame of spriteFrames){
+        // manual serialization of primitive properties, excluding PIXI sprites and graphics
+        let frameData = {
+            frameName: frame.frameName,
+            data: frame.data,
+            rotated: frame.rotated,
+            sourceSize: frame.sourceSize,
+            offSet: frame.offSet,
+            position: frame.position
+        };
+        projectData.frames.push(frameData);
+    }
+
+    let dataUrl = 'data:application/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(projectData));
     let a = document.createElement("a");
-    a.href = url;
-    a.download = "project.ssm";
+    a.href = dataUrl;
+    a.download = "project.json";
     a.click();
-    URL.revokeObjectURL(url);
 }
 
 function exportProject(){
@@ -132,7 +231,37 @@ function exportProject(){
         return;
     }
 
-    
+    // canvas to png
+    // CRITICAL BUG: exported PNG Size != logical size
+    try{
+        // Use PIXI extractor to get an HTMLCanvasElement with the current stage rendered
+        let pngCanvas = app.renderer.extract.canvas(app.stage);
+        if(pngCanvas){
+            // Convert to blob and trigger download
+            pngCanvas.toBlob(function(blob){
+                if(!blob) return;
+                let pngUrl = URL.createObjectURL(blob);
+                let a2 = document.createElement('a');
+                a2.href = pngUrl;
+                a2.download = 'spritesheet.png';
+                a2.click();
+                URL.revokeObjectURL(pngUrl);
+            }, 'image/png');
+        } else {
+            // Fallback: try toDataURL on the canvas element
+            let canvasEl = app.view;
+            if(canvasEl && canvasEl.toDataURL){
+                let dataUrl = canvasEl.toDataURL('image/png');
+                let a2 = document.createElement('a');
+                a2.href = dataUrl;
+                a2.download = 'spritesheet_FALLBACK.png';
+                a2.click();
+            }
+        }
+    } catch(e){
+        console.error('Error exporting PNG:', e);
+    }
+
 
     let doc = document.implementation.createDocument("", "", null);
 
@@ -418,6 +547,10 @@ function updateCanvas(){
     let width = app.renderer.width;
     let height = app.renderer.height;
 
+    let spriteMargin = options.borderPadding;
+    let spritePadding = options.spritePadding;
+    let allowedToRotate = options.allowRotation;
+
     let freeRects = [
         new Rect(spriteMargin, spriteMargin,
             width - spriteMargin * 2,
@@ -543,8 +676,11 @@ function updateOptions(){
     logicalWidth = w;
     logicalHeight = h;
     app.renderer.resize(logicalWidth, logicalHeight);
-    spritePadding = padding;
-    spriteMargin = borderPadding;
+
+    options.spritePadding = padding;
+    options.borderPadding = borderPadding;
+    options.allowRotation = allowRotation;
+
 
     // adjust displayed size to wrapper while keeping logical resolution
     resizeToWrapper();
